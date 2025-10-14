@@ -1,0 +1,22 @@
+{
+  "log": {"loglevel": "warning"},
+  "inbounds": [{
+    "port": 10000,
+    "protocol": "vmess",
+    "settings": {
+      "clients": [{
+        "id": "CHANGE-THIS-UUID-NOW",
+        "alterId": 0
+      }]
+    },
+    "streamSettings": {
+      "network": "ws",
+      "wsSettings": {
+        "path": "/vmess"
+      }
+    }
+  }],
+  "outbounds": [{
+    "protocol": "freedom"
+  }]
+}
