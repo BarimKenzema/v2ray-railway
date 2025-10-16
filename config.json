@@ -1,22 +1,28 @@
 {
-  "log": {"loglevel": "warning"},
+  "log": {
+    "loglevel": "warning"
+  },
   "inbounds": [{
-    "port": 10000,
-    "protocol": "vmess",
+    "port": 8080,
+    "protocol": "vless",
     "settings": {
       "clients": [{
-        "id": "23c53625-2abe-4f9f-9163-8fa2a157e4dc",
-        "alterId": 0
-      }]
+        "id": "b1436161-d538-43ff-a891-c6fe120d51cd",
+        "level": 0
+      }],
+      "decryption": "none"
     },
     "streamSettings": {
-      "network": "ws",
-      "wsSettings": {
-        "path": "/vmess"
+      "network": "grpc",
+      "security": "none",
+      "grpcSettings": {
+        "serviceName": "api",
+        "multiMode": false
       }
     }
   }],
   "outbounds": [{
-    "protocol": "freedom"
+    "protocol": "freedom",
+    "settings": {}
   }]
 }
