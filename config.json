@@ -3,21 +3,19 @@
     "loglevel": "warning"
   },
   "inbounds": [{
-    "port": 8080,
-    "protocol": "vless",
+    "port": 7860,
+    "protocol": "vmess",
     "settings": {
       "clients": [{
         "id": "b1436161-d538-43ff-a891-c6fe120d51cd",
-        "level": 0
-      }],
-      "decryption": "none"
+        "alterId": 0
+      }]
     },
     "streamSettings": {
-      "network": "grpc",
+      "network": "ws",
       "security": "none",
-      "grpcSettings": {
-        "serviceName": "api",
-        "multiMode": false
+      "wsSettings": {
+        "path": "/api/v1/stream"
       }
     }
   }],
