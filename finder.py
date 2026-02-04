@@ -1,4 +1,4 @@
-# finder.py - FIXED VERSION - Only Cherry Servers configs
+# finder.py - SMARTER SEARCH
 import requests
 import re
 import time
@@ -12,18 +12,38 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 PROVIDER = "Cherry Servers"
 COUNTRY = "Lithuania"
 
+# ⚠️ NEW STRATEGY: Search for V2Ray patterns + IPs, not just IPs
 SEARCH_QUERIES = [
-    "5.199.172", "5.199.171", "5.199.170", "5.199.169",
-    "5.199.168", "5.199.167", "5.199.166", "5.199.165",
-    "5.199.164", "5.199.163", "5.199.162", "5.199.161", "5.199.160",
-    "cherryservers vless", "fromblancwithlove",
+    # V2Ray specific searches with IPs
+    'vless "5.199.17"',
+    'vmess "5.199.17"',
+    '"protocol":"vless" "5.199.17"',
+    '"protocol":"vmess" "5.199.17"',
+    
+    # Domain-based (more reliable)
+    "fromblancwithlove",
+    
+    # Protocol + Lithuania
+    "vless lithuania extension:txt",
+    "vmess lithuania extension:txt",
+    
+    # File type specific
+    'vless:// "5.199" extension:txt',
+    'vmess:// "5.199" extension:txt',
 ]
 
-POPULAR_REPOS = [
+# Focus ONLY on known V2Ray repositories
+V2RAY_REPOS = [
     "yebekhe/TelegramV2rayCollector",
     "barry-far/V2ray-Configs",
     "mfuu/v2ray",
     "mahdibland/V2RayAggregator",
+    "peasoft/NoMoreWalls",
+    "aiboboxx/v2rayfree",
+    "itsyebekhe/HiN-VPN",
+    "Pawdroid/Free-servers",
+    "resasanian/Mirza",
+    "Leon406/SubCrawler",
 ]
 
 class GitHubSearcher:
@@ -35,7 +55,7 @@ class GitHubSearcher:
         self.session = requests.Session()
         self.session.headers.update(self.headers)
     
-    def search_code(self, query, max_results=50):
+    def search_code(self, query, max_results=30):
         all_items = []
         page = 1
         
@@ -69,23 +89,37 @@ class GitHubSearcher:
                     break
                     
             except Exception as e:
-                print(f"  Error: {e}")
+                print(f"  ❌ {e}")
                 break
         
         return all_items
 
+def is_v2ray_config_file(content):
+    """Check if file actually contains V2Ray configs"""
+    if not content:
+        return False
+    
+    # Must contain V2Ray protocol indicators
+    v2ray_indicators = [
+        'vless://',
+        'vmess://',
+        'trojan://',
+        '"protocol":"vless"',
+        '"protocol":"vmess"',
+        '"protocol":"trojan"',
+    ]
+    
+    return any(indicator in content for indicator in v2ray_indicators)
+
 def is_cherry_ip(ip_or_domain):
     """Check if IP is Cherry Servers (5.199.160-175.*)"""
-    # Extract IP if it's in the string
-    match = re.search(r'\b5\.199\.1[6-7]\d\.\d+\b', ip_or_domain)
+    match = re.search(r'\b5\.199\.1[6-7]\d\.\d+\b', str(ip_or_domain))
     return bool(match)
 
 def extract_ip_from_config(config):
     """Extract IP/domain from config string"""
     try:
-        # For vless://, vmess://, trojan://, ss://
         if '://' in config:
-            # Remove protocol
             after_protocol = config.split('://', 1)[1]
             
             # For vmess (base64 encoded)
@@ -99,11 +133,9 @@ def extract_ip_from_config(config):
                 except:
                     return ''
             
-            # For vless, trojan, ss - format: protocol://uuid@IP:port
+            # For vless, trojan, ss
             if '@' in after_protocol:
-                # Get part after @
                 after_at = after_protocol.split('@', 1)[1]
-                # Get IP before :
                 ip_part = after_at.split(':')[0].split('?')[0]
                 return ip_part
     except:
@@ -124,7 +156,7 @@ def extract_configs(text):
     all_configs.extend(re.findall(r'trojan://[^\s\n<>"\'\)\]]+', text))
     all_configs.extend(re.findall(r'ss://[^\s\n<>"\'\)\]]+', text))
     
-    # Filter: Keep only configs that use Cherry Servers IPs
+    # Filter: Keep only Cherry Servers configs
     cherry_configs = []
     
     for config in all_configs:
@@ -132,12 +164,11 @@ def extract_configs(text):
         
         if is_cherry_ip(ip_or_domain):
             cherry_configs.append(config)
-            print(f"    ✓ Cherry: {ip_or_domain}")
     
     return cherry_configs
 
 def extract_cherry_ips(text):
-    """Extract Cherry Servers IPs"""
+    """Extract Cherry Servers IPs from text"""
     return set(re.findall(r'5\.199\.1[6-7]\d\.\d+', text))
 
 def download_file(url):
@@ -153,6 +184,7 @@ def main():
     print("=" * 60)
     print("🔍 V2Ray Config Finder - Cherry Servers ONLY")
     print("=" * 60)
+    print("Strategy: Search V2Ray repos for Cherry IPs")
     print("Target: 5.199.160.0 - 5.199.175.255")
     print("=" * 60)
     
@@ -167,49 +199,64 @@ def main():
     all_configs = set()
     all_ips = set()
     
-    # Search
-    print("\n🔍 Searching...\n")
+    # Strategy 1: Search V2Ray-specific queries
+    print("\n🔍 Phase 1: V2Ray-specific searches...\n")
     
     for query in SEARCH_QUERIES:
-        print(f"🔎 {query[:40]}", end=' ')
-        items = searcher.search_code(query, max_results=50)
+        print(f"🔎 {query[:50]}", end=' ')
+        items = searcher.search_code(query, max_results=30)
         for item in items:
             all_urls.add(item['html_url'])
-        print(f"✓")
-        time.sleep(2)
+        print(f"✓ ({len(all_urls)} total)")
+        time.sleep(3)
     
-    for repo in POPULAR_REPOS:
-        print(f"📦 {repo}", end=' ')
-        items = searcher.search_code(f"repo:{repo} 5.199.17", max_results=30)
+    # Strategy 2: Search known V2Ray repos
+    print(f"\n🔍 Phase 2: Known V2Ray repositories...\n")
+    
+    for repo in V2RAY_REPOS:
+        print(f"📦 {repo[:40]}", end=' ')
+        
+        # Search for Cherry IPs in this repo
+        items = searcher.search_code(f'repo:{repo} "5.199.17"', max_results=20)
         for item in items:
             all_urls.add(item['html_url'])
-        print(f"✓")
-        time.sleep(2)
+        
+        print(f"✓ ({len(all_urls)} total)")
+        time.sleep(3)
     
-    print(f"\n✓ Found {len(all_urls)} files to check")
+    print(f"\n✓ Found {len(all_urls)} unique files")
     
-    # Download and extract
-    print(f"\n📥 Filtering for Cherry Servers configs...\n")
+    # Download and filter
+    print(f"\n📥 Phase 3: Extracting Cherry configs...\n")
     
     for i, url in enumerate(list(all_urls)[:100], 1):
-        print(f"[{i:3d}] {url.split('/')[-1][:35]:35s}")
+        filename = url.split('/')[-1][:40]
+        print(f"[{i:3d}] {filename:40s}", end=' ')
         
         content = download_file(url)
         
-        if content and '5.199.1' in content:  # Quick pre-check
-            configs = extract_configs(content)  # Only returns Cherry configs
-            ips = extract_cherry_ips(content)
-            
-            if configs:
-                all_configs.update(configs)
-                all_ips.update(ips)
-                print(f"      → Found {len(configs)} Cherry configs")
+        # Check if it's actually a V2Ray config file
+        if not is_v2ray_config_file(content):
+            print("○ Not V2Ray")
+            continue
+        
+        # Extract Cherry configs
+        configs = extract_configs(content)
+        ips = extract_cherry_ips(content)
+        
+        if configs:
+            all_configs.update(configs)
+            all_ips.update(ips)
+            print(f"✓ {len(configs)} Cherry configs!")
+        else:
+            print("○ No Cherry")
         
         time.sleep(1)
     
     # Save results
     print("\n" + "=" * 60)
-    print("💾 Saving...")
+    print("💾 Saving results...")
+    print("=" * 60)
     
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     
@@ -218,20 +265,23 @@ def main():
     with open(config_file, 'w', encoding='utf-8') as f:
         f.write(f"# Cherry Servers V2Ray Configs - {COUNTRY}\n")
         f.write(f"# Provider: {PROVIDER}\n")
-        f.write(f"# IP Range: 5.199.160.0 - 5.199.175.255 ONLY\n")
+        f.write(f"# IP Range: 5.199.160.0 - 5.199.175.255\n")
         f.write(f"# Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}\n")
-        f.write(f"# Total: {len(all_configs)} configs\n")
+        f.write(f"# Total: {len(all_configs)} unique configs\n")
+        f.write(f"#\n")
+        f.write(f"# Copy any line to your V2Ray client\n")
         f.write(f"#" + "=" * 58 + "\n\n")
         
         for config in sorted(all_configs):
-            f.write(f"{config}\n")
+            ip = extract_ip_from_config(config)
+            f.write(f"{config}  # IP: {ip}\n")
     
     # Save IPs
     ip_file = OUTPUT_DIR / f"cherry_servers_ips_{timestamp}.txt"
     with open(ip_file, 'w') as f:
-        f.write(f"# Cherry Servers IPs - {COUNTRY}\n")
+        f.write(f"# Cherry Servers IPs\n")
         f.write(f"# Range: 5.199.160.0 - 5.199.175.255\n")
-        f.write(f"# Total: {len(all_ips)} IPs\n\n")
+        f.write(f"# Total: {len(all_ips)}\n\n")
         for ip in sorted(all_ips):
             f.write(f"{ip}\n")
     
@@ -245,6 +295,10 @@ def main():
         f.write(f"Country:      {COUNTRY}\n")
         f.write(f"IP Range:     5.199.160.0 - 5.199.175.255\n")
         f.write(f"Generated:    {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}\n\n")
+        f.write(f"Search Strategy:\n")
+        f.write(f"  1. V2Ray-specific queries with IPs\n")
+        f.write(f"  2. Known V2Ray config repositories\n")
+        f.write(f"  3. Filter out non-V2Ray files\n\n")
         f.write(f"Results:\n")
         f.write(f"  Files checked:       {len(all_urls)}\n")
         f.write(f"  Cherry configs:      {len(all_configs)}\n")
@@ -254,13 +308,12 @@ def main():
             f.write(f"Cherry Servers IPs:\n")
             for ip in sorted(all_ips):
                 f.write(f"  • {ip}\n")
-        
-        if all_configs:
-            f.write(f"\nSample configs:\n")
-            for config in list(sorted(all_configs))[:5]:
-                protocol = config.split('://')[0]
-                ip = extract_ip_from_config(config)
-                f.write(f"  • {protocol}:// → {ip}\n")
+        else:
+            f.write("⚠️  No Cherry Servers configs found.\n")
+            f.write("Possible reasons:\n")
+            f.write("  - Configs may be temporary/deleted\n")
+            f.write("  - IPs may not be in public repos\n")
+            f.write("  - Try manual search on subscription sites\n")
     
     # Create latest
     import shutil
@@ -269,14 +322,13 @@ def main():
     shutil.copy(summary_file, OUTPUT_DIR / "latest_summary.txt")
     
     # Print summary
-    print("=" * 60)
-    print("✅ DONE!")
+    print("\n✅ DONE!")
     print("=" * 60)
     print(f"📄 Cherry Configs:  {len(all_configs)}")
     print(f"📍 Cherry IPs:      {len(all_ips)}")
     
     if all_ips:
-        print(f"\n📍 Cherry Servers IPs found:")
+        print(f"\n📍 IPs:")
         for ip in sorted(all_ips):
             print(f"  • {ip}")
     
@@ -284,7 +336,14 @@ def main():
         print(f"\n📋 Sample configs:")
         for config in list(sorted(all_configs))[:3]:
             ip = extract_ip_from_config(config)
-            print(f"  {config[:60]}... → {ip}")
+            protocol = config.split('://')[0]
+            print(f"  {protocol}:// → {ip}")
+    else:
+        print("\n⚠️  No Cherry Servers configs found in GitHub")
+        print("💡 Try these alternatives:")
+        print("  1. Check subscription sites directly")
+        print("  2. Search Telegram channels")
+        print("  3. Your working config might be private/deleted")
 
 if __name__ == "__main__":
     main()
