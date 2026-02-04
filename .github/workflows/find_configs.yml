@@ -3,9 +3,12 @@ name: Find V2Ray Configs
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 */6 * * *'  # Every 6 hours
+    - cron: '0 */6 * * *'
   push:
     branches: [ main ]
+
+permissions:
+  contents: write  # 👈 This fixes the permission error!
 
 jobs:
   find-configs:
@@ -14,6 +17,8 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v3
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}  # Use default token for pushing
       
     - name: Setup Python
       uses: actions/setup-python@v4
@@ -25,13 +30,13 @@ jobs:
         
     - name: Run finder
       env:
-        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}  # Use your token for searching
       run: python finder.py
         
     - name: Commit results
       run: |
-        git config user.name "GitHub Action"
-        git config user.email "action@github.com"
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
         git add configs/
         git diff --quiet && git diff --staged --quiet || \
           git commit -m "🤖 Update configs - $(date '+%Y-%m-%d %H:%M UTC')"
