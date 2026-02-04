@@ -1,12 +1,3 @@
-# Cherry Servers V2Ray Configs - Lithuania
-# Provider: Cherry Servers
-# IP Range: 5.199.160.0 - 5.199.175.255
-# Generated: 2026-02-04 20:50:07 UTC
-# Total: 98 unique configs
-#
-# Copy any line to your V2Ray client
-#==========================================================
-
 ss://95abaefc-7861-417a-81b7-166cb788ce1a@5.199.162.232:2083/?type=grpc&encryption=none&flow=&serviceName=UpdateService&sni=apple.com&fp=chrome&security=reality&pbk=J6NuOlIq3ypdTFc1TMhDDKmF8BWPnNWZq1EkxD7K-lQ&sid=6da16b1335651b38#%5BOpenRay%5D%20%F0%9F%87%B1%F0%9F%87%B9%20LT-5  # IP: 5.199.162.232
 ss://95abaefc-7861-417a-81b7-166cb788ce1a@5.199.162.232:2083/?type=grpc&encryption=none&flow=&serviceName=UpdateService&sni=apple.com&fp=chrome&security=reality&pbk=J6NuOlIq3ypdTFc1TMhDDKmF8BWPnNWZq1EkxD7K-lQ&sid=6da16b1335651b38#@HIDDIFY_plas%20-%20130  # IP: 5.199.162.232
 ss://95abaefc-7861-417a-81b7-166cb788ce1a@5.199.162.232:2083?mode=gun&amp;security=reality&amp;encryption=none&amp;pbk=J6NuOlIq3ypdTFc1TMhDDKmF8BWPnNWZq1EkxD7K-lQ&amp;fp=chrome&amp;type=grpc&amp;serviceName=UpdateService&amp;sni=apple.com&amp;sid=6da16b1335651b38#@Twitro❤️  # IP: 5.199.162.232
